@@ -24,19 +24,19 @@
     <div id="color-picker" class="controller" ng-controller="ColorPickerCtrl">
       <h2>Color picker</h2>
 
-      <colorpreview red="{{colorService.r}}" green="{{colorService.g}}" blue="{{colorService.b}}">
+      <colorpreview red="{{colorService.getColor().r}}" green="{{colorService.getColor().g}}" blue="{{colorService.getColor().b}}">
         <!-- color preview here -->
       </colorpreview>
 
       <form>
         <label>Red</label>
-        <input id="red" type="number" min="0" max="255" ng-model="colorService.r" />
+        <input id="red" type="number" min="0" max="255" my-change="changeRed" my-value="colorService.getColor().r"/>
 
         <label>Green</label>
-        <input id="green" type="number" min="0" max="255" ng-model="colorService.g" />
+        <input id="green" type="number" min="0" max="255" my-change="changeGreen" my-value="colorService.getColor().g"/>
 
         <label>Blue</label>
-        <input id="blue" type="number" min="0" max="255" ng-model="colorService.b" />
+        <input id="blue" type="number" min="0" max="255" my-change="changeBlue" my-value="colorService.getColor().b"/>
       </form>
     </div>
 
