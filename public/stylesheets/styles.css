@@ -15,10 +15,10 @@
   background-color: rgb(250, 250, 250);
 }
 
-#color-preview {
+colorpreview {
   height: 100px;
   max-width: 300px;
   border: 2px solid black;
   margin: 20px 0;
-  background-color: rgb(224, 68, 193);
+  display: block;
 }
