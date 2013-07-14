@@ -1,0 +1,24 @@
+.controller {
+  margin: 20px;
+  padding: 20px;
+  border-width: 2px;
+  border-style: dashed;;
+}
+
+#color-picker.controller {
+  border-color: rgb(33, 105, 39);
+  background-color: rgb(183, 253, 188);
+}
+
+#grayscaler.controller {
+  border-color: #CCC;
+  background-color: rgb(250, 250, 250);
+}
+
+#color-preview {
+  height: 100px;
+  max-width: 300px;
+  border: 2px solid black;
+  margin: 20px 0;
+  background-color: rgb(224, 68, 193);
+}
