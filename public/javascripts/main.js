@@ -74,41 +74,6 @@ directives.directive('colorpreview', function() {
   } 
 });
 
-directives.directive('myChange', function() {
-  return {
-    restrict: 'A',
-
-    link: function(scope, element, attrs) {
-      $(element).change(function(e) {
-        if(!attrs.myChange) {
-          throw "You need to pass the name of the callback function as a parameter"
-        }
-
-        var fn = scope[attrs.myChange];
-
-        if(typeof fn !== "function") {
-          throw "'" + attrs.myChange + "' is not a function";
-        }
-
-        fn($(this).val());
-        scope.$apply();
-      });
-    }
-  } 
-});
-
-directives.directive('myValue', function() {
-  return {
-    restrict: 'A',
-
-    link: function(scope, element, attrs) {
-      scope.$watch(attrs.myValue, function(val) {
-        $(element).val(val);
-      })
-    }
-  } 
-});
-
 /* **************** CONTROLLERS *************************** */
 
 function ColorPickerCtrl ($scope, colorService) {
@@ -126,14 +91,18 @@ function ColorPickerCtrl ($scope, colorService) {
     colorService.setColor(newColor);
   }
 
+  $scope.$watch('colorService.getColor().r', function(val) { $scope.r = val; });
+  $scope.$watch('colorService.getColor().g', function(val) { $scope.g = val; });
+  $scope.$watch('colorService.getColor().b', function(val) { $scope.b = val; });
+
   $scope.changeRed = function(val) {
-    changeColor("red", val);
+    changeColor("red", $scope.r);
   }
   $scope.changeGreen = function(val) {
-    changeColor("green", val);
+    changeColor("green", $scope.g);
   }
   $scope.changeBlue = function(val) {
-    changeColor("blue", val);
+    changeColor("blue", $scope.b);
   }
 };
 
