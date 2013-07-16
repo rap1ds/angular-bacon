@@ -9,36 +9,41 @@ services.factory('colorService', ['$rootScope', '$http', '$timeout', function($r
     b: 150
   }
 
+  var colorBus = new Bacon.Bus();
+  var colorProperty = colorBus.toProperty(color);
+
   function load() {
-    $http.get('/api/color')
-      .success(function(response) {
-        color = response;
-      });
+    return Bacon.fromPromise($http.get('/api/color'));
   }
 
-  function getColor() {
-    return color;
-  }
+  // TODO Remove me
+  var previousColor = [];
+  colorProperty.onValue(function(val) {
+    previousColor[0] = previousColor[1];
+    previousColor[1] = val;
+  })
 
   function setColor(newColor) {
-    var oldColor = angular.copy(color);
-    color = newColor; // Change the color immediately to make the UI super responsive
+    colorBus.push(newColor); // Change the color immediately to make the UI super responsive
+
     $http.post('/api/color', newColor)
       .success(function(response) {
         // Ok
       })
       .error(function() {
         // Change the color back
-        color = oldColor;
+        colorBus.push(previousColor[0]);
       });
   }
 
   // Load immediately
-  load();
+  load().onValue(function(response) {
+    colorBus.push(response.data);
+  });
 
   return {
     setColor: setColor,
-    getColor: getColor
+    getColor: colorProperty
   };
 }]);
 
@@ -77,23 +82,22 @@ directives.directive('colorpreview', function() {
 /* **************** CONTROLLERS *************************** */
 
 function ColorPickerCtrl ($scope, colorService) {
-  $scope.colorService = colorService;
+  colorService.getColor.onValue(function(val) {
+    $scope.r = val.r;
+    $scope.g = val.g;
+    $scope.b = val.b;
+  });
 
   function changeColor(color, newValue) {
     var numValue = Number(newValue);
-    var oldColor = colorService.getColor();
     var newColor = {
-      r: color === "red" ? numValue : oldColor.r,
-      g: color === "green" ? numValue : oldColor.g,
-      b: color === "blue" ? numValue : oldColor.b
+      r: color === "red" ? numValue : $scope.r,
+      g: color === "green" ? numValue : $scope.g,
+      b: color === "blue" ? numValue : $scope.b
     };
 
     colorService.setColor(newColor);
   }
-
-  $scope.$watch('colorService.getColor().r', function(val) { $scope.r = val; });
-  $scope.$watch('colorService.getColor().g', function(val) { $scope.g = val; });
-  $scope.$watch('colorService.getColor().b', function(val) { $scope.b = val; });
 
   $scope.changeRed = function(val) {
     changeColor("red", $scope.r);
@@ -112,24 +116,19 @@ function GrayScalerCtrl($scope, colorService) {
   $scope.colorService = colorService;
 
   $scope.makeItGrayscale = function() {
-    var color = colorService.getColor();
-    var avg = Math.round((color.r + color.g + color.b) / 3);
+    var avg = Math.round(($scope.r + $scope.g + $scope.b) / 3);
     colorService.setColor({r: avg, g: avg, b: avg});
   }
 
   function updateIsItGrayscale() {
-    var color = colorService.getColor();
-    var yesItIs = (color.r === color.g) && (color.g === color.b);
+    var yesItIs = ($scope.r === $scope.g) &&  ($scope.g === $scope.b);
     $scope.isItGrayscale = yesItIs ? "Yes it is!" : "No";
   }
 
-  $scope.$watch('colorService.getColor().r', function(r) {
-    updateIsItGrayscale();
-  });
-  $scope.$watch('colorService.getColor().g', function(r) {
-    updateIsItGrayscale();
-  });
-  $scope.$watch('colorService.getColor().b', function(r) {
+  colorService.getColor.onValue(function(val) {
+    $scope.r = val.r;
+    $scope.g = val.g;
+    $scope.b = val.b;
     updateIsItGrayscale();
   });
 };
