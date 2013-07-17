@@ -13,12 +13,6 @@ services.factory('colorService', ['$rootScope', '$http', '$timeout', function($r
   var colorProperty = colorBus.toProperty(color);
 
   /** FRP **/
-  function mapTodos(f) { 
-    return function (todos) { 
-      return _.map(todos, f); 
-    }; 
-  }
-
   function modifyColor(updatedColor) {
     return function (oldColor) {
       return updatedColor; 
@@ -27,15 +21,7 @@ services.factory('colorService', ['$rootScope', '$http', '$timeout', function($r
 
   var userModifications = new Bacon.Bus();
 
-  /*
-  var userModificationsProperty = colorChanges.scan(color, function(color, modificationFn) {
-    return modificationFn(color);
-  });
-  */
-
   var initialServerLoad = Bacon.fromPromise($http.get('/api/color')).map(".data");
-
-  var serverStateBus = new Bacon.Bus();
 
   var serverSave = userModifications.debounce(500).flatMapLatest((function(init) {
     var oldValue = init;
@@ -51,51 +37,18 @@ services.factory('colorService', ['$rootScope', '$http', '$timeout', function($r
     }
   })(color));
 
-  var mappedServerSave = serverSave.map(modifyColor);
-
-  var serverChanges = initialServerLoad.map(modifyColor)
-    .merge(serverSave.map(modifyColor));
-
-  var identity = function(i) { return i };
-
-  var serverInteraction = serverChanges.scan(color, function(x, modificationFn) {
-    debugger
-    return modificationFn(x)
-  });
-
   var colorChanges = userModifications.map(modifyColor)
-    .merge(serverInteraction.changes().map(modifyColor));
+    .merge(initialServerLoad.map(modifyColor))
+    .merge(serverSave.map(modifyColor))
 
   var colorBusProperty = colorChanges.scan(color, function(color, modificationFn) {
-    debugger;
     return modificationFn(color);
   });
 
   /** FRP **/
 
-  // TODO Remove me
-  var previousColor = [];
-  colorProperty.onValue(function(val) {
-    previousColor[0] = previousColor[1];
-    previousColor[1] = val;
-  })
-
-  function setColor(newColor) {
-    colorBus.push(newColor); // Change the color immediately to make the UI super responsive
-
-    $http.post('/api/color', newColor)
-      .success(function(response) {
-        // Ok
-      })
-      .error(function() {
-        // Change the color back
-        colorBus.push(previousColor[0]);
-      });
-  }
-
   return {
     userModifications: userModifications,
-    setColor: setColor,
     getColor: colorBusProperty
   };
 }]);
