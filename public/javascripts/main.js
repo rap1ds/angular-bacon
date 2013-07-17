@@ -12,9 +12,66 @@ services.factory('colorService', ['$rootScope', '$http', '$timeout', function($r
   var colorBus = new Bacon.Bus();
   var colorProperty = colorBus.toProperty(color);
 
-  function load() {
-    return Bacon.fromPromise($http.get('/api/color'));
+  /** FRP **/
+  function mapTodos(f) { 
+    return function (todos) { 
+      return _.map(todos, f); 
+    }; 
   }
+
+  function modifyColor(updatedColor) {
+    return function (oldColor) {
+      return updatedColor; 
+    };
+  }
+
+  var userModifications = new Bacon.Bus();
+
+  /*
+  var userModificationsProperty = colorChanges.scan(color, function(color, modificationFn) {
+    return modificationFn(color);
+  });
+  */
+
+  var initialServerLoad = Bacon.fromPromise($http.get('/api/color')).map(".data");
+
+  var serverStateBus = new Bacon.Bus();
+
+  var serverSave = userModifications.debounce(500).flatMapLatest((function(init) {
+    var oldValue = init;
+    return function(val) {
+      return Bacon.fromPromise($http.post('/api/color', val))
+        .map(function() {
+          oldValue = val;
+          return val;
+        })
+        .mapError(function() {
+          return oldValue;
+        });
+    }
+  })(color));
+
+  var mappedServerSave = serverSave.map(modifyColor);
+
+  var serverChanges = initialServerLoad.map(modifyColor)
+    .merge(serverSave.map(modifyColor));
+
+  var identity = function(i) { return i };
+
+  var serverInteraction = serverChanges.scan(color, function(x, modificationFn) {
+    debugger
+    return modificationFn(x)
+  });
+
+  var colorChanges = userModifications.map(modifyColor)
+    .merge(serverInteraction.changes().map(modifyColor));
+
+  var colorBusProperty = colorChanges.scan(color, function(color, modificationFn) {
+    debugger;
+    return modificationFn(color);
+  });
+
+  /** FRP **/
 
   // TODO Remove me
   var previousColor = [];
@@ -36,14 +93,10 @@ services.factory('colorService', ['$rootScope', '$http', '$timeout', function($r
       });
   }
 
-  // Load immediately
-  load().onValue(function(response) {
-    colorBus.push(response.data);
-  });
-
   return {
+    userModifications: userModifications,
     setColor: setColor,
-    getColor: colorProperty
+    getColor: colorBusProperty
   };
 }]);
 
@@ -88,6 +141,9 @@ function ColorPickerCtrl ($scope, colorService) {
     $scope.b = val.b;
   });
 
+  var userChanges = new Bacon.Bus();
+  colorService.userModifications.plug(userChanges);
+
   function changeColor(color, newValue) {
     var numValue = Number(newValue);
     var newColor = {
@@ -96,7 +152,7 @@ function ColorPickerCtrl ($scope, colorService) {
       b: color === "blue" ? numValue : $scope.b
     };
 
-    colorService.setColor(newColor);
+    userChanges.push(newColor);
   }
 
   $scope.changeRed = function(val) {
@@ -113,11 +169,12 @@ function ColorPickerCtrl ($scope, colorService) {
 ColorPickerCtrl.$inject = ['$scope', 'colorService'];
 
 function GrayScalerCtrl($scope, colorService) {
-  $scope.colorService = colorService;
+  var userChanges = new Bacon.Bus();
+  colorService.userModifications.plug(userChanges);
 
   $scope.makeItGrayscale = function() {
     var avg = Math.round(($scope.r + $scope.g + $scope.b) / 3);
-    colorService.setColor({r: avg, g: avg, b: avg});
+    userChanges.push({r: avg, g: avg, b: avg});
   }
 
   function updateIsItGrayscale() {
